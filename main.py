@@ -2,7 +2,7 @@ import disnake
 import datetime
 from disnake.ext import commands
 from disnake_components import Button, Select, SelectOption, ComponentsBot
-from disnake.ui import Button, Select, SelectOption, ButtonStyle
+from disnake.ui import Button, SelectMenu, SelectMenuOption, ButtonStyle
 import config
 
 # Bot prefix
