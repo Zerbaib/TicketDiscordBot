@@ -5,34 +5,34 @@ import config
 
 bot = commands.Bot(command_prefix='!')
 
-tickets = []
-
 @bot.event
 async def on_ready():
     print(f'Bot connecté en tant que {bot.user}')
 
-@bot.command()
-async def createticket(ctx):
-    button = Button(style=ButtonStyle.green, label="Créer un ticket", custom_id="create_ticket")
-    embed = disnake.Embed(title="Panel de création de ticket", description="Cliquez sur le bouton ci-dessous pour créer un ticket.")
-    message = await ctx.send(embed=embed, components=[[button]])
+@bot.event
+async def on_message(message):
+    if message.author == bot.user:
+        return
+    
+    if message.content == '!ticket':
+        button = Button(style=ButtonStyle.green, label="Créer un ticket", custom_id="create_ticket")
+        embed = disnake.Embed(title="Panel de création de ticket", description="Cliquez sur le bouton ci-dessous pour créer un ticket.")
+        await message.channel.send(embed=embed, components=[[button]])
 
-    tickets.append(message.id)
+    await bot.process_commands(message)
 
 @bot.event
 async def on_button_click(interaction):
     if interaction.component.custom_id == "create_ticket":
-        message = await interaction.channel.fetch_message(interaction.message.id)
         category = interaction.guild.get_channel(config.CATEGORY_ID)
         channel = await category.create_text_channel(name=f'ticket-{interaction.author.id}')
-        await channel.send(f"Ticket créé par {interaction.author.mention}")
-        await message.edit(embed=None, content="Ticket créé avec succès!", components=[])
+        await channel.send(f"Bienvenue dans votre ticket, {interaction.author.mention} !")
+        
+        button = Button(style=ButtonStyle.red, label="Fermer le ticket", custom_id="close_ticket")
+        embed = disnake.Embed(title="Ticket", description="Ceci est un ticket.")
+        await channel.send(embed=embed, components=[[button]])
 
-@bot.command()
-async def closeticket(ctx):
-    if isinstance(ctx.channel, disnake.TextChannel) and ctx.channel.category_id == config.CATEGORY_ID:
-        await ctx.channel.delete()
-    else:
-        await ctx.send('Cette commande doit être utilisée dans un ticket.')
+    elif interaction.component.custom_id == "close_ticket":
+        await interaction.channel.delete()
 
 bot.run(config.TOKEN)
