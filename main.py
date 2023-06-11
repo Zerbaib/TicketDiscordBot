@@ -4,7 +4,7 @@ from discord.ext import commands
 import config
 
 #Bot prefix
-bot = ComponentsBot('tb!', help_command=None)
+bot = commands.Bot('!', help_command=None)
 
 @bot.event
 async def on_ready():
