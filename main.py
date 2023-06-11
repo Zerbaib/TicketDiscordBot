@@ -5,7 +5,7 @@ from disnake_components import Button, Select, SelectOption, ComponentsBot
 import config
 
 # Bot prefix
-bot = ComponentsBot('tb!', help_command=None)
+bot = ComponentsBot('!', help_command=None)
 
 @bot.event
 async def on_ready():
