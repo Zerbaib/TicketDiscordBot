@@ -3,8 +3,10 @@ import datetime
 from discord.ext import commands
 import config
 
-#Bot prefix
-bot = commands.Bot('!', help_command=None)
+intents = discord.Intents.default()
+intents.typing = False
+intents.presences = False
+bot = commands.Bot('!', intents=intents, help_command=None)
 
 @bot.event
 async def on_ready():
