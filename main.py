@@ -8,7 +8,7 @@ tickets = []
 
 @bot.event
 async def on_ready():
-    print(f'Bot connecté en tant que {bot.user}')
+    print(f'Bot ready')
 
 @bot.command()
 async def createticket(ctx):
