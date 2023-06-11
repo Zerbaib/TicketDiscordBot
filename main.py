@@ -1,6 +1,6 @@
 import disnake
 from disnake.ext import commands
-from disnake.ui import Button, Select, SelectOption, View
+from disnake.ui import Button, Select, selectmenu
 import config
 
 intents = disnake.Intents.default()
@@ -20,7 +20,7 @@ async def on_ready():
     ))
     print('Ready to support ✅')
 
-class TicketView(View):
+class TicketView(disnake.ui.View):
     def __init__(self):
         super().__init__()
 
@@ -39,7 +39,7 @@ class TicketView(View):
         embed = disnake.Embed(title="Ticket", description="This is a ticket.")
         components = [
             [
-                Button(style=ButtonStyle.red, label="Close ticket", custom_id="close_ticket")
+                Button(style=disnake.ButtonStyle.red, label="Close ticket", custom_id="close_ticket")
             ]
         ]
         await channel.send(embed=embed, components=components)
