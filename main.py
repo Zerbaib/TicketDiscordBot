@@ -1,8 +1,6 @@
 import discord
 import datetime
 from discord.ext import commands
-from discord_components import Button, Select, SelectOption, ComponentsBot, interaction
-from discord_components.component import ButtonStyle
 import config
 
 #Bot prefix
