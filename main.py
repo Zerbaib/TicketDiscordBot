@@ -271,4 +271,4 @@ async def on_select_option(interaction):
                                   ]
                               ])
 
-bot.run('')
+bot.run(config.TOKEN)
