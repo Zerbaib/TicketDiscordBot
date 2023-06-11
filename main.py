@@ -9,13 +9,14 @@ tickets = []
 
 @bot.event
 async def on_ready():
-    print(f'Bot ready')
+    print(f'Bot connecté en tant que {bot.user}')
 
 @bot.command()
 async def createticket(ctx):
     button = Button(style=ButtonStyle.green, label="Créer un ticket", custom_id="create_ticket")
     embed = disnake.Embed(title="Panel de création de ticket", description="Cliquez sur le bouton ci-dessous pour créer un ticket.")
-    message = await ctx.send(embed=embed, components=[button])
+    message = await ctx.send(embed=embed, components=[[button]])
+
     tickets.append(message.id)
 
 @bot.event
