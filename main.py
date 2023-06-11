@@ -1,12 +1,12 @@
 import disnake
+import datetime
 from disnake.ext import commands
-from disnake.ui import Button, Select
+from disnake_components import Button, Select, SelectOption, ComponentsBot, InteractionType
+from disnake_components.component import ButtonStyle
 import config
 
-intents = disnake.Intents.default()
-intents.typing = False
-intents.presences = False
-bot = commands.Bot('!', intents=intents, help_command=None)
+# Bot prefix
+bot = ComponentsBot('tb!', help_command=None)
 
 @bot.event
 async def on_ready():
@@ -14,64 +14,262 @@ async def on_ready():
     for guild in bot.guilds:
         members += guild.member_count - 1
 
-    await bot.change_presence(activity=disnake.Activity(
-        type=disnake.ActivityType.watching,
-        name=f'{members} members'
-    ))
+    await bot.change_presence(
+        activity=disnake.Activity(
+            type=disnake.ActivityType.watching,
+
+            # Bot status
+            name=f'{members} members'
+
+        )
+    )
     print('Ready to support ✅')
 
-class TicketView(disnake.ui.View):
-    def __init__(self):
-        super().__init__()
 
-    @disnake.ui.button(label="Create a ticket", style=disnake.ButtonStyle.green, custom_id="create_ticket")
-    async def create_ticket(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        await interaction.response.edit_message(
-            embed=None,
-            components=[],
-        )
+# Ticket command
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def ticket(ctx):
+    await ctx.message.delete()
 
-        channel = interaction.channel
-        category = interaction.guild.get_channel(config.CATEGORY_ID)
-        channel = await category.create_text_channel(name=f'ticket-{interaction.author.id}')
-        await channel.send(f"Welcome to your ticket, {interaction.author.mention}!")
+    # Embed title and description
+    embed = disnake.Embed(title='Tickets', description='Welcome to tickets system.', color=config.embed_color)
 
-        embed = disnake.Embed(title="Ticket", description="This is a ticket.")
-        components = [
-            [
-                Button(style=disnake.ButtonStyle.red, label="Close ticket", custom_id="close_ticket")
-            ]
+    # Embed image
+    embed.set_image(url='https://i.imgur.com/FoI5ITb.png')
+
+    await ctx.send(
+        embed=embed,
+
+        # Embed button
+        components=[
+            Button(
+                style=ButtonStyle.green,
+                label="Create a ticket",
+                emoji='🔧'
+            ).custom_id('Ticket')
         ]
-        await channel.send(embed=embed, components=components)
+    )
 
-    @disnake.ui.button(label="Close ticket", style=disnake.ButtonStyle.red, custom_id="close_ticket")
-    async def close_ticket(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-        await interaction.response.edit_message(
-            content=f"Ticket closed by {interaction.author.mention}.",
-            embed=None,
-            components=[],
+
+@bot.event
+async def on_button_click(interaction):
+    canal = interaction.channel
+    canal_logs = interaction.guild.get_channel(config.id_channel_ticket_logs)
+
+    # Select function
+    if interaction.component.custom_id == "Ticket":
+        await interaction.send(
+            components=[
+                Select(
+                    placeholder="How can we help you?",
+                    options=[
+                        SelectOption(label="Question", value="question", description='If you have a simple question.',
+                                     emoji='❔'),
+                        SelectOption(label="Help", value="help", description='If you need help from us.',
+                                     emoji='🔧'),
+                        SelectOption(label="Report", value="report", description='To report a misbehaving user.',
+                                     emoji='🚫'),
+                    ],
+                ).custom_id('menu')
+            ]
         )
-        await interaction.channel.delete()
+
+    # Call staff function
+    elif interaction.component.custom_id == 'call_staff':
+
+        embed_llamar_staff = disnake.Embed(
+            description=f"🔔 {interaction.author.mention} has called the staff.", color=config.embed_color)
+        await canal.send(f'<@&{config.id_staff_role}>', embed=embed_llamar_staff, delete_after=20)
+
+    # Close ticket function
+    elif interaction.component.custom_id == 'close_ticket':
+
+        embed_cerrar_ticket = disnake.Embed(
+            description=f"⚠️ Are you sure you want to close the ticket?", color=config.embed_color)
+        await canal.send(interaction.author.mention, embed=embed_cerrar_ticket,
+                         components=[
+                             [
+                                 Button(custom_id='close_yes', label="Yes", style=ButtonStyle.green),
+                                 Button(custom_id='close_no', label="No", style=ButtonStyle.red)
+                             ]
+                         ])
+
+    # Ticket logs function
+    elif interaction.component.custom_id == 'close_yes':
+
+        await canal.delete()
+        embed_logs = disnake.Embed(title="Tickets", description=f"", timestamp=datetime.datetime.utcnow(),
+                                   color=config.embed_color)
+        embed_logs.add_field(name="Ticket", value=f"{canal.name}", inline=True)
+        embed_logs.add_field(name="Closed by", value=f"{interaction.author.mention}", inline=False)
+        embed_logs.set_thumbnail(url=interaction.author.avatar_url)
+        await canal_logs.send(embed=embed_logs)
+
+    elif interaction.component.custom_id == 'close_no':
+        await interaction.message.delete()
+
 
 @bot.event
-async def on_message(message):
-    if message.author == bot.user:
-        return
+async def on_select_option(interaction):
+    if interaction.component.custom_id == "menu":
 
-    if message.content == '!ticket':
-        embed = disnake.Embed(title="Create a ticket", description="Click the button below to create a ticket.")
-        view = TicketView()
-        await message.channel.send(embed=embed, view=view)
-        await message.add_reaction('❌')
+        guild = interaction.guild
+        category = disnake.utils.get(interaction.guild.categories, id=config.id_category)
+        rol_staff = disnake.utils.get(interaction.guild.roles, id=config.id_staff_role)
 
-    await bot.process_commands(message)
+        # Select option | Question
+        if interaction.values[0] == 'question':
 
-@bot.event
-async def on_reaction_add(reaction, user):
-    if user == bot.user:
-        return
+            # Creating ticket channel | Question
+            channel = await guild.create_text_channel(name=f'❔┃{interaction.author.name}-ticket', category=category)
 
-    if reaction.message.author == bot.user and str(reaction.emoji) == '❌':
-        await reaction.message.delete()
+            # Ticket channel permissions | Question
+            await channel.set_permissions(interaction.guild.get_role(interaction.guild.id),
+                                          send_messages=False,
+                                          read_messages=False)
+            await channel.set_permissions(interaction.author,
+                                          send_messages=True,
+                                          read_messages=True,
+                                          add_reactions=True,
+                                          embed_links=True,
+                                          attach_files=True,
+                                          read_message_history=True,
+                                          external_emojis=True)
+            await channel.set_permissions(rol_staff,
+                                          send_messages=True,
+                                          read_messages=True,
+                                          add_reactions=True,
+                                          embed_links=True,
+                                          attach_files=True,
+                                          read_message_history=True,
+                                          external_emojis=True,
+                                          manage_messages=True)
 
-bot.run(config.TOKEN)
+            await interaction.send(f'> The {channel.mention} channel was created to solve your questions.',
+                                  delete_after=3)
+
+            # Inside the ticket | Question
+            # Embed inside the ticket | Question
+            embed_question = disnake.Embed(
+                title=f'Question - ¡Hi {interaction.author.name}!',
+                description='In this ticket we have an answer to your question.\n\nIf you cant get someone to help you, press the button `🔔 Call staff`..',
+                color=config.embed_color)
+            embed_question.set_thumbnail(url=interaction.author.avatar_url)
+
+            await channel.send(interaction.author.mention, embed=embed_question,
+
+                              # Embed buttons inside the ticket | Question
+                              components=[
+                                  [
+                                      Button(custom_id='close_ticket', label="Close ticket", style=ButtonStyle.red,
+                                             emoji='🔐'),
+                                      Button(custom_id='call_staff', label="Call staff", style=ButtonStyle.blue,
+                                             emoji='🔔')
+                                  ]
+                              ])
+
+
+        # Select option | Help
+        elif interaction.values[0] == 'help':
+
+            # Creating ticket channel | Help
+            channel = await guild.create_text_channel(name=f'🔧┃{interaction.author.name}-ticket', category=category)
+
+            # Ticket channel permissions | Help
+            await channel.set_permissions(interaction.guild.get_role(interaction.guild.id),
+                                          send_messages=False,
+                                          read_messages=False)
+            await channel.set_permissions(interaction.author,
+                                          send_messages=True,
+                                          read_messages=True,
+                                          add_reactions=True,
+                                          embed_links=True,
+                                          attach_files=True,
+                                          read_message_history=True,
+                                          external_emojis=True)
+            await channel.set_permissions(rol_staff,
+                                          send_messages=True,
+                                          read_messages=True,
+                                          add_reactions=True,
+                                          embed_links=True,
+                                          attach_files=True,
+                                          read_message_history=True,
+                                          external_emojis=True,
+                                          manage_messages=True)
+
+            await interaction.send(f'> The {channel.mention} channel was created to help you.', delete_after=3)
+
+            # Inside the ticket | Help
+            # Embed inside the ticket | Help
+            embed_question = disnake.Embed(
+                title=f'Help - ¡Hi {interaction.author.name}!',
+                description='In this ticket we can help you with whatever you need.\n\nIf you cant get someone to help you, press the button `🔔 Call staff`.',
+                color=config.embed_color)
+            embed_question.set_thumbnail(url=interaction.author.avatar_url)
+
+            await channel.send(interaction.author.mention, embed=embed_question,
+
+                              # Embed buttons inside the ticket | Help
+                              components=[
+                                  [
+                                      Button(custom_id='close_ticket', label="Close ticket", style=ButtonStyle.red,
+                                             emoji='🔐'),
+                                      Button(custom_id='call_staff', label="Call staff", style=ButtonStyle.blue,
+                                             emoji='🔔')
+                                  ]
+                              ])
+
+
+        # Select option | Report
+        elif interaction.values[0] == 'report':
+
+            # Creating ticket channel | Report
+            channel = await guild.create_text_channel(name=f'🚫┃{interaction.author.name}-ticket', category=category)
+
+            # Ticket channel permissions | Report
+            await channel.set_permissions(interaction.guild.get_role(interaction.guild.id),
+                                          send_messages=False,
+                                          read_messages=False)
+            await channel.set_permissions(interaction.author,
+                                          send_messages=True,
+                                          read_messages=True,
+                                          add_reactions=True,
+                                          embed_links=True,
+                                          attach_files=True,
+                                          read_message_history=True,
+                                          external_emojis=True)
+            await channel.set_permissions(rol_staff,
+                                          send_messages=True,
+                                          read_messages=True,
+                                          add_reactions=True,
+                                          embed_links=True,
+                                          attach_files=True,
+                                          read_message_history=True,
+                                          external_emojis=True,
+                                          manage_messages=True)
+
+            await interaction.send(f'> The {channel.mention} channel was created to report to the user.',
+                                  delete_after=3)
+
+            # Inside the ticket | Report
+            # Embed inside the ticket | Report
+            embed_question = disnake.Embed(
+                title=f'Report - ¡Hi {interaction.author.name}!',
+                description='In this ticket we can help you with your report.\n\nIf you cant get someone to help you, press the button `🔔 Call staff`.',
+                color=config.embed_color)
+            embed_question.set_thumbnail(url=interaction.author.avatar_url)
+
+            await channel.send(interaction.author.mention, embed=embed_question,
+
+                              # Embed buttons inside the ticket | Report
+                              components=[
+                                  [
+                                      Button(custom_id='close_ticket', label="Close ticket", style=ButtonStyle.red,
+                                             emoji='🔐'),
+                                      Button(custom_id='call_staff', label="Call staff", style=ButtonStyle.blue,
+                                             emoji='🔔')
+                                  ]
+                              ])
+
+bot.run('')
