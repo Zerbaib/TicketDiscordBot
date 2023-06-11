@@ -22,16 +22,16 @@ async def createticket(ctx):
 async def on_button_click(interaction):
     if interaction.component.custom_id == "create_ticket":
         message = await interaction.channel.fetch_message(interaction.message.id)
-        category = interaction.guild.get_channel(CATEGORY_ID)
+        category = interaction.guild.get_channel(config.CATEGORY_ID)
         channel = await category.create_text_channel(name=f'ticket-{interaction.author.id}')
         await channel.send(f"Ticket créé par {interaction.author.mention}")
         await message.edit(embed=None, content="Ticket créé avec succès!", components=[])
 
 @bot.command()
 async def closeticket(ctx):
-    if isinstance(ctx.channel, disnake.TextChannel) and ctx.channel.category_id == CATEGORY_ID:
+    if isinstance(ctx.channel, disnake.TextChannel) and ctx.channel.category_id == config.CATEGORY_ID:
         await ctx.channel.delete()
     else:
         await ctx.send('Cette commande doit être utilisée dans un ticket.')
 
-bot.run('YOUR_BOT_TOKEN')
+bot.run(config.TOKEN)
