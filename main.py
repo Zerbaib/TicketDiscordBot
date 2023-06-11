@@ -1,8 +1,7 @@
 import disnake
 import datetime
 from disnake.ext import commands
-from disnake_components import Button, Select, SelectOption, ComponentsBot, InteractionType
-from disnake_components.component import ButtonStyle
+from disnake_components import Button, Select, SelectOption, ComponentsBot
 import config
 
 # Bot prefix
