@@ -1,6 +1,6 @@
 import disnake
 from disnake.ext import commands
-from disnake.ui import Button, Select, selectmenu
+from disnake.ui import Button, Select
 import config
 
 intents = disnake.Intents.default()
